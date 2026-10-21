@@ -1,0 +1,5 @@
+node_modules/
+data/*.db
+data/*.db.bak
+data/*.db-journal
+CLAUDE.md

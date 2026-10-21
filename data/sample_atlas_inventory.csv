@@ -1,0 +1,52 @@
+﻿account_number,debtor_name,phone_number,balance,Status,client_name
+10024500,Maria Garcia,(214) 555-0100,50.00,Active,Alpha Bank
+10024537,James Thompson,214-555-0101,$784.57,ACTIVE,Lone Star Medical Group
+10024574,Aisha Bello,+1 214.555.0102,1519.14,active,Summit Auto Finance
+10024611,Robert Nguyen,12145550103,2253.71, Active ,Alpha Bank
+10024648,Linda Park,2145550104,"$2,988.28",Closed,Lone Star Medical Group
+10024685,Carlos Ramirez,(214) 555-0105,3722.85,closed,Summit Auto Finance
+10024722,Emily Walsh,214-555-0106,4457.42,Active,Alpha Bank
+10024759,David Kim,+1 214.555.0107,"$5,191.99",ACTIVE,Lone Star Medical Group
+10024796,Grace Okafor,12145550108,5926.56,active,Summit Auto Finance
+10024833,Michael Brennan,2145550109,6661.13, Active ,Alpha Bank
+10024870,Sofia Rossi,(214) 555-0110,"$7,395.70",Closed,Lone Star Medical Group
+10024907,Daniel Hughes,214-555-0111,8130.27,closed,Summit Auto Finance
+10024944,Priya Shah,+1 214.555.0112,8864.84,Active,Alpha Bank
+10024981,Thomas Mueller,12145550113,$599.41,ACTIVE,Lone Star Medical Group
+10025018,Hannah Lee,2145550114,1333.98,active,Summit Auto Finance
+10025055,Marcus Bennett,(214) 555-0115,2068.55, Active ,Alpha Bank
+10025092,Olivia Carter,214-555-0116,"$2,803.12",Closed,Lone Star Medical Group
+10025129,Kevin Duong,+1 214.555.0117,3537.69,closed,Summit Auto Finance
+10025166,Rachel Foster,12145550118,4272.26,Active,Alpha Bank
+10025203,Andre Mitchell,2145550119,"$5,006.83",ACTIVE,Lone Star Medical Group
+10025240,Natalie Ortiz,(214) 555-0120,5741.4,active,Summit Auto Finance
+10025277,Steven Price,214-555-0121,6475.97, Active ,Alpha Bank
+10025314,Fatima Hassan,+1 214.555.0122,"$7,210.54",Closed,Lone Star Medical Group
+10025351,Brian Coleman,12145550123,7945.11,closed,Summit Auto Finance
+10025388,Chloe Reyes,2145550124,8679.68,Active,Alpha Bank
+10025425,Victor Petrov,(214) 555-0125,$414.25,ACTIVE,Lone Star Medical Group
+10025462,Megan Sullivan,214-555-0126,1148.82,active,Summit Auto Finance
+10025499,Luis Morales,+1 214.555.0127,1883.39, Active ,Alpha Bank
+10025536,Tara Quinn,12145550128,"$2,617.96",Closed,Lone Star Medical Group
+10025573,Owen Fischer,2145550129,3352.53,closed,Summit Auto Finance
+10025610,Jasmine Ward,(214) 555-0130,4087.10,Active,Alpha Bank
+10025647,Eric Lindqvist,214-555-0131,"$4,821.67",ACTIVE,Lone Star Medical Group
+10025684,Monica Diaz,+1 214.555.0132,5556.24,active,Summit Auto Finance
+10025721,Samuel Adeyemi,12145550133,6290.81, Active ,Alpha Bank
+10025758,Leah Cohen,2145550134,"$7,025.38",Closed,Lone Star Medical Group
+10025795,Isaac Ferreira,(214) 555-0135,7759.95,closed,Summit Auto Finance
+10025832,Paula Grant,214-555-0136,8494.52,Active,Alpha Bank
+10025869,Nathan Hale,+1 214.555.0137,$229.09,ACTIVE,Lone Star Medical Group
+10025906,Irene Ivanova,12145550138,963.66,active,Summit Auto Finance
+10025943,Wesley Jensen,2145550139,1698.23, Active ,Alpha Bank
+00031822,Ruth Abernathy,214-555-0141,0,Closed,Alpha Bank
+1002-9911,Dmitri Volkov,214-555-0142,"1,980.00",Active,Alpha Bank
+10031001,,214-555-0150,420.00,Active,Alpha Bank
+10031002,Gina Marsh,214-555-0151,N/A,Active,Summit Auto Finance
+10031003,Felix Tran,214-555-0152,-20.00,Active,Lone Star Medical Group
+10031004,Ana Lucero,214-555-0153,310.00,Paid,Alpha Bank
+10031005,Wade Porter,555-0154,275.25,Active,Alpha Bank
+10031006,Nora Blake,214-555-0155,640.00,Active,Alpha Bank
+10031006,Nora Blake,214-555-0155,590.00,Active,Alpha Bank
+10031007,Hugo Martin,214-555-0156,150.00,Active,Summit Auto Finance
+10031007,Hugo Martin,214-555-0156,150.00,Active,Summit Auto Finance
