@@ -4,12 +4,14 @@
 //   npm run ingest -- path/to/file.csv     # any other file
 //
 // Rules (see README for the reasoning):
-//   - File-level problems (missing required column, no data rows, too many bad
-//     rows) abort the whole file. Nothing is written.
-//   - Row-level problems reject that row only. The account's existing data is
-//     kept, and the reason is listed in the summary.
+//   - File-level problems (not UTF-8, missing required column, no data rows,
+//     too many bad rows) abort the whole file. Nothing is written.
+//   - Row-level problems reject that row only, and the reason is listed in the
+//     summary. If the account already exists, its data is kept but it is held
+//     for review (needs_review = 1), since the row may have carried a change we
+//     couldn't apply. The next valid row for the account lifts the hold.
 //   - An account_number appearing more than once in a file is ambiguous, so
-//     every occurrence is rejected for manual review.
+//     every occurrence is rejected, with the same hold for an existing account.
 //   - Valid rows are upserted in a single transaction: new accounts inserted,
 //     existing ones overwritten. Nothing is ever deleted.
 
@@ -35,8 +37,21 @@ function readCsv(csvPath) {
     throw new IngestAbortedError(`File not found: ${csvPath}`);
   }
 
+  // Excel's plain "CSV" format on Windows isn't UTF-8. Read leniently, accented
+  // names would be stored garbled ("José" becomes "Jos�") with no error, so the
+  // whole file is refused instead.
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(fs.readFileSync(csvPath));
+  } catch {
+    throw new IngestAbortedError(
+      'File is not saved as UTF-8, so accented letters (é, ñ) can\'t be read. ' +
+      'In Excel, use Save As and choose "CSV UTF-8", then upload again.'
+    );
+  }
+
   let header = [];
-  const records = parse(fs.readFileSync(csvPath), {
+  const records = parse(text, {
     bom: true,
     columns: (names) => {
       // "Account Number" and "account_number" both become account_number.
@@ -68,6 +83,13 @@ function findDuplicates(rows) {
 
 function rawSignature(raw) {
   return JSON.stringify(REQUIRED_COLUMNS.map((c) => String(raw[c] ?? '').trim()));
+}
+
+/** Count written records by status, most common first, so an odd value like "Actve" stands out. */
+function countStatuses(records) {
+  const counts = new Map();
+  for (const { status } of records) counts.set(status, (counts.get(status) ?? 0) + 1);
+  return Object.fromEntries([...counts].sort((a, b) => b[1] - a[1]));
 }
 
 export function ingestFile(csvPath, {
@@ -155,8 +177,12 @@ export function ingestFile(csvPath, {
       balance_cents = excluded.balance_cents,
       status        = excluded.status,
       client_name   = excluded.client_name,
+      needs_review  = 0,
       updated_at    = excluded.updated_at
   `);
+  // Matches nothing for an account not yet on file. Leaves updated_at alone: it
+  // records when Atlas's data for the account was last applied.
+  const holdForReview = db.prepare('UPDATE accounts SET needs_review = 1 WHERE account_number = ?');
 
   let inserted = 0;
   let updated = 0;
@@ -167,18 +193,30 @@ export function ingestFile(csvPath, {
         else inserted++;
         upsert.run({ ...record, now });
       }
+      for (const r of rejected) {
+        r.held = Boolean(r.accountNumber) && holdForReview.run(r.accountNumber).changes > 0;
+      }
     })();
   } finally {
     db.close();
   }
 
   rejected.sort((a, b) => a.rowNums[0] - b.rowNums[0]);
-  return { rowsRead: rows.length, inserted, updated, rejected, dbPath, backupPath };
+  return {
+    rowsRead: rows.length,
+    inserted,
+    updated,
+    rejected,
+    heldForReview: rejected.filter((r) => r.held).length,
+    statusCounts: countStatuses(valid),
+    dbPath,
+    backupPath,
+  };
 }
 
-function formatRejected({ rowNums, accountNumber, reasons }) {
+function formatRejected({ rowNums, accountNumber, reasons, held }) {
   const where = rowNums.length > 1 ? `rows ${rowNums.join(', ')}` : `row ${rowNums[0]}`;
-  const account = accountNumber ? ` (account ${accountNumber})` : '';
+  const account = accountNumber ? ` (account ${accountNumber}${held ? ', held for review' : ''})` : '';
   return `  ${where}${account}: rejected: ${reasons.join('; ')}`;
 }
 
@@ -195,6 +233,9 @@ function main() {
     console.log(`  Inserted:  ${s.inserted}`);
     console.log(`  Updated:   ${s.updated}`);
     console.log(`  Rejected:  ${s.rowsRead - s.inserted - s.updated}`);
+    console.log(`  On hold:   ${s.heldForReview} (already on file; held for review until a valid row arrives)`);
+    const byStatus = Object.entries(s.statusCounts).map(([status, n]) => `${status} ${n}`);
+    console.log(`  By status: ${byStatus.join(', ') || '(none)'}`);
     if (s.rejected.length) {
       console.log('\nRejected rows (existing data for these accounts was left unchanged):');
       s.rejected.forEach((r) => console.log(formatRejected(r)));

@@ -34,7 +34,14 @@ export function parseBalanceCents(raw) {
   const original = String(raw ?? '').trim();
   if (!original) return { error: 'missing balance' };
 
-  const cleaned = original.replace(/[$,]/g, '');
+  // Commas only as thousands separators: a decimal comma ("12,50") would
+  // otherwise be read as 1250.
+  const noDollar = original.replace(/\$/g, '');
+  if (noDollar.includes(',') && !/^-?\d{1,3}(,\d{3})+(\.\d*)?$/.test(noDollar)) {
+    return { error: `invalid balance "${original}" (commas allowed only as thousands separators)` };
+  }
+
+  const cleaned = noDollar.replace(/,/g, '');
   if (/^-\d+(\.\d{1,2})?$/.test(cleaned)) {
     return { error: `negative balance (${original}); may indicate an overpayment, needs manual review` };
   }
@@ -65,14 +72,18 @@ export function parsePhone(raw) {
   return { error: `invalid phone_number "${original}" (expected 10-digit US number)` };
 }
 
-/** Status must be Active or Closed, case-insensitive. */
+/**
+ * Status: any non-empty value. Active and Closed are matched case-insensitively;
+ * anything else (Disputed, Bankruptcy, ...) is stored as given. Only Active is
+ * collectible, so an unknown or misspelled status fails safe (see README).
+ */
 export function parseStatus(raw) {
   const original = String(raw ?? '').trim();
   if (!original) return { error: 'missing status' };
   const lower = original.toLowerCase();
   if (lower === 'active') return { value: 'Active' };
   if (lower === 'closed') return { value: 'Closed' };
-  return { error: `invalid status "${original}" (expected Active or Closed)` };
+  return { value: original };
 }
 
 function parseRequiredText(raw, field) {

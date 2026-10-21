@@ -50,16 +50,32 @@ test('inserts new accounts, then updates them on re-upload without touching crea
   assert.ok(fs.existsSync(`${dbPath}.bak`), 'backup taken before second upload');
 });
 
-test('a rejected row leaves the existing record unchanged', () => {
+test('a rejected row keeps the existing record but holds it for review', () => {
   ingestFile(writeCsv('a.csv', [HEADER, '1001,Ann Lee,214-555-0101,100.00,Active,Alpha Bank']), { dbPath });
+  // A dispute arrives on a row with a bad phone number, so it can't be applied.
   const s = ingestFile(writeCsv('b.csv', [
     HEADER,
-    '1001,Ann Lee,214-555-0101,N/A,Active,Alpha Bank',
+    '1001,Ann Lee,555-0101,40.00,Disputed,Alpha Bank',
     ...goodRows(9, 100),
   ]), { dbPath });
 
   assert.equal(s.rejected.length, 1);
-  assert.equal(getAccount('1001').balance_cents, 10000);
+  assert.equal(s.heldForReview, 1);
+  const account = getAccount('1001');
+  assert.equal(account.balance_cents, 10000);
+  assert.equal(account.status, 'Active');
+  assert.equal(account.needs_review, 1);
+});
+
+test('the next valid row for a held account lifts the hold', () => {
+  ingestFile(writeCsv('a.csv', [HEADER, '1001,Ann Lee,214-555-0101,100.00,Active,Alpha Bank']), { dbPath });
+  ingestFile(writeCsv('b.csv', [HEADER, '1001,Ann Lee,555-0101,40.00,Disputed,Alpha Bank', ...goodRows(9, 100)]),
+    { dbPath });
+  ingestFile(writeCsv('c.csv', [HEADER, '1001,Ann Lee,214-555-0101,40.00,Disputed,Alpha Bank']), { dbPath });
+
+  const account = getAccount('1001');
+  assert.equal(account.needs_review, 0);
+  assert.equal(account.status, 'Disputed');
 });
 
 test('accounts missing from a later upload are kept', () => {
@@ -68,8 +84,9 @@ test('accounts missing from a later upload are kept', () => {
   assert.ok(getAccount('1002'));
 });
 
-test('duplicate account numbers in one file are all rejected', () => {
-  const s = ingestFile(writeCsv('a.csv', [
+test('duplicate account numbers in one file are all rejected; an existing account is held', () => {
+  ingestFile(writeCsv('a.csv', [HEADER, '2001,Ann Lee,214-555-0101,100.00,Active,Alpha Bank']), { dbPath });
+  const s = ingestFile(writeCsv('b.csv', [
     HEADER,
     '2001,Ann Lee,214-555-0101,100.00,Active,Alpha Bank',
     '2001,Ann Lee,214-555-0101,90.00,Active,Alpha Bank',
@@ -78,10 +95,27 @@ test('duplicate account numbers in one file are all rejected', () => {
     ...goodRows(16),
   ]), { dbPath });
 
-  assert.equal(getAccount('2001'), undefined);
+  // Already on file: data unchanged, only the hold is set.
+  assert.equal(getAccount('2001').balance_cents, 10000);
+  assert.equal(getAccount('2001').needs_review, 1);
+  // Not on file: nothing is added.
   assert.equal(getAccount('2002'), undefined);
+  assert.equal(s.heldForReview, 1);
   assert.match(s.rejected.find((r) => r.accountNumber === '2001').reasons[0], /conflicting/);
   assert.match(s.rejected.find((r) => r.accountNumber === '2002').reasons[0], /identical/);
+});
+
+test('statuses other than Active and Closed are stored and counted in the summary', () => {
+  ingestFile(writeCsv('a.csv', [HEADER, '1001,Ann Lee,214-555-0101,100.00,Active,Alpha Bank']), { dbPath });
+  const s = ingestFile(writeCsv('b.csv', [
+    HEADER,
+    '1001,Ann Lee,214-555-0101,100.00,Disputed,Alpha Bank',
+    '1002,Bo Kim,214-555-0102,50.00,active,Alpha Bank',
+  ]), { dbPath });
+
+  // A disputed account must not stay Active from an earlier upload.
+  assert.equal(getAccount('1001').status, 'Disputed');
+  assert.deepEqual(s.statusCounts, { Disputed: 1, Active: 1 });
 });
 
 test('header names are matched case-insensitively and a BOM is ignored', () => {
@@ -100,14 +134,29 @@ test('a missing required column aborts the whole file', () => {
 });
 
 test('too many bad rows aborts the whole file and writes nothing', () => {
-  ingestFile(writeCsv('a.csv', [HEADER, '1001,Ann Lee,214-555-0101,100.00,Active,Alpha Bank']), { dbPath });
+  ingestFile(writeCsv('a.csv', [HEADER, ...goodRows(2)]), { dbPath });
   const p = writeCsv('b.csv', [
     HEADER,
-    '1001,Ann Lee,214-555-0101,5.00,Active,Alpha Bank', // valid, would update...
+    '1001,Person 0,214-555-1000,5.00,Active,Alpha Bank', // valid, would update...
+    '1002,Person 1,214-555-1001,oops,Active,Alpha Bank', // rejected, would hold...
     ...Array.from({ length: 3 }, (_, i) => `${3000 + i},X,214-555-0101,oops,Active,Alpha Bank`),
   ]);
   assert.throws(() => ingestFile(p, { dbPath }), IngestAbortedError);
-  assert.equal(getAccount('1001').balance_cents, 10000, '...but the file was aborted');
+  // ...but the file was aborted.
+  assert.equal(getAccount('1001').balance_cents, 10000);
+  assert.equal(getAccount('1002').needs_review, 0);
+});
+
+test('a file not saved as UTF-8 aborts; accented names in UTF-8 are kept', () => {
+  // Windows-1252, Excel's plain "CSV" format: é and ñ are the single bytes 0xE9 and 0xF1.
+  const cp1252 = path.join(dir, 'cp1252.csv');
+  fs.writeFileSync(cp1252, Buffer.from(`${HEADER}\n1001,Jos\xe9 Pe\xf1a,214-555-0101,10.00,Active,Alpha Bank\n`, 'latin1'));
+  assert.throws(() => ingestFile(cp1252, { dbPath }), (err) =>
+    err instanceof IngestAbortedError && /UTF-8/.test(err.message));
+  assert.equal(fs.existsSync(dbPath), false, 'nothing written');
+
+  ingestFile(writeCsv('utf8.csv', [HEADER, '1001,José Peña,214-555-0101,10.00,Active,Alpha Bank']), { dbPath });
+  assert.equal(getAccount('1001').debtor_name, 'José Peña');
 });
 
 test('a file with only a header aborts', () => {

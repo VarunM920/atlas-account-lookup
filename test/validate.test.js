@@ -23,11 +23,16 @@ test('balances parse to integer cents', () => {
   assert.deepEqual(parseBalanceCents('1250'), { value: 125000 });
   assert.deepEqual(parseBalanceCents('1.15'), { value: 115 }); // no float drift
   assert.deepEqual(parseBalanceCents('0'), { value: 0 });
+  assert.deepEqual(parseBalanceCents('12,345,678.90'), { value: 1234567890 });
 });
 
 test('bad balances are rejected', () => {
   for (const bad of ['', 'N/A', '12.345', '1.2.3', 'abc']) {
     assert.ok(parseBalanceCents(bad).error, `expected "${bad}" to be rejected`);
+  }
+  // A decimal comma must not be misread: "12,50" is not 1250.
+  for (const bad of ['12,50', '1,25', '1,250,5', '1.250,50', '1234,567']) {
+    assert.match(parseBalanceCents(bad).error, /thousands separators/, bad);
   }
   assert.match(parseBalanceCents('-20.00').error, /negative balance.*manual review/);
 });
@@ -45,10 +50,10 @@ test('bad phone numbers are rejected', () => {
   }
 });
 
-test('status is Active or Closed, case-insensitive', () => {
+test('status: Active and Closed are case-insensitive, other values are kept as given', () => {
   assert.deepEqual(parseStatus(' ACTIVE '), { value: 'Active' });
   assert.deepEqual(parseStatus('closed'), { value: 'Closed' });
-  assert.ok(parseStatus('Paid').error);
+  assert.deepEqual(parseStatus(' Disputed '), { value: 'Disputed' });
   assert.ok(parseStatus('').error);
 });
 
