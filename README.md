@@ -185,10 +185,10 @@ host's health check and uptime monitoring, and returns no account data.
 
 The public demo runs on Render's free tier:
 
-**`https://<service>.onrender.com`** *(filled in after deploying)*
+**https://atlas-account-lookup-8a5s.onrender.com**
 
 ```bash
-curl -H "x-api-key: <key>" https://<service>.onrender.com/accounts/10024500
+curl -H "x-api-key: <key>" https://atlas-account-lookup-8a5s.onrender.com/accounts/10024500
 ```
 
 The key is sent with the submission, not committed. Some accounts to try:
