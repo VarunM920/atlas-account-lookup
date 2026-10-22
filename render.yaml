@@ -1,0 +1,19 @@
+# Render Blueprint for the public demo (New > Blueprint > select this repo).
+#
+# Free instances have no persistent disk: files are wiped on every restart, redeploy
+# and sleep. So the start command reloads the sample CSV before starting the server.
+# A production deployment would use a paid instance with a persistent disk instead
+# (see README, "Deployment").
+services:
+  - type: web
+    name: atlas-account-lookup
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run ingest -- data/sample_atlas_inventory.csv && npm start
+    healthCheckPath: /health
+    envVars:
+      # Render generates a random key on first deploy; copy it from the service's
+      # Environment tab into Retell's custom-function headers and the submission note.
+      - key: API_KEY
+        generateValue: true
