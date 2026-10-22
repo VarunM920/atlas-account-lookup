@@ -3,9 +3,13 @@
 //   npm start                          # port 3000, or PORT
 //   curl localhost:3000/accounts/10024500
 //
+// When API_KEY is set, /accounts requires it in the x-api-key header. Unset (local
+// runs, tests), the API is open and a warning is logged at startup.
+//
 // Every response is JSON, including errors and unknown routes, so the agent can
 // branch on a stable { error, message } body instead of an HTML error page.
 
+import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import express from 'express';
 import { openDb, DEFAULT_DB_PATH } from './db.js';
@@ -15,6 +19,19 @@ const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' 
 
 function sendError(res, status, error, message) {
   res.status(status).json({ error, message });
+}
+
+const sha256 = (text) => crypto.createHash('sha256').update(text).digest();
+
+function requireApiKey(apiKey) {
+  const expected = sha256(apiKey);
+  return (req, res, next) => {
+    const given = req.get('x-api-key');
+    // Compare fixed-length digests in constant time, so response timing doesn't
+    // reveal how much of a guessed key was right.
+    if (given && crypto.timingSafeEqual(sha256(given), expected)) return next();
+    sendError(res, 401, 'unauthorized', 'Missing or invalid API key. Send it in the x-api-key header.');
+  };
 }
 
 function toResponse(row) {
@@ -34,9 +51,11 @@ function toResponse(row) {
   };
 }
 
-export function createApp({ db }) {
+export function createApp({ db, apiKey }) {
   const app = express();
   app.disable('x-powered-by');
+  // Account data only; /health and unknown routes stay open.
+  if (apiKey) app.use('/accounts', requireApiKey(apiKey));
 
   const ping = db.prepare('SELECT 1');
   const findAccount = db.prepare('SELECT * FROM accounts WHERE account_number = ?');
@@ -85,12 +104,19 @@ export function createApp({ db }) {
 
 function main() {
   const port = Number(process.env.PORT) || 3000;
+  const apiKey = process.env.API_KEY;
   const db = openDb();
   const { count } = db.prepare('SELECT COUNT(*) AS count FROM accounts').get();
-  createApp({ db }).listen(port, () => {
+  createApp({ db, apiKey }).listen(port, () => {
     console.log(`Account lookup API listening on port ${port}`);
     console.log(`Serving ${count} account(s) from ${DEFAULT_DB_PATH}`);
     if (count === 0) console.log('The database is empty. Load a CSV first: npm run ingest -- <file>');
+    if (apiKey) {
+      console.log('API key required (x-api-key header).');
+    } else {
+      console.warn('WARNING: API_KEY is not set, so account data is open to anyone who can reach ' +
+        'this server. Fine locally; set API_KEY on any deployed instance.');
+    }
   });
 }
 

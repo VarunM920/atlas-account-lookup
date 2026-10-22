@@ -4,8 +4,8 @@ Prototype that lets CollectWise's AI agent look up Atlas Recovery debtor account
 account number. Atlas uploads a CSV of their inventory; an ingestion script loads it
 into SQLite; an HTTP endpoint serves lookups to the agent.
 
-> Status: ingestion and the lookup API are complete and tested. The API key and
-> deployment are next.
+> Status: ingestion and the lookup API (with its API key) are complete and tested.
+> Deployment is next.
 
 ## Requirements
 
@@ -149,6 +149,22 @@ follow up. The keys are always present, so the response shape never changes.
 **Closed and other non-`Active` accounts** are returned normally, not as a 404, so the
 agent can tell "closed" apart from "no such account".
 
+**API key.** The endpoint returns debtors' names, phone numbers and balances, and
+account numbers are easy to guess, so a public deployment must not be open. When the
+`API_KEY` environment variable is set, `/accounts` requires it in an `x-api-key` header.
+A missing or wrong key gets a 401, checked before anything else, so no lookup runs.
+When `API_KEY` isn't set (local runs, tests), the API is open so it can be tried without
+setup, and the server prints a warning at startup. `/health` never needs the key:
+hosting health checks can't send headers, and it returns no account data.
+
+```bash
+API_KEY=my-local-key npm start
+curl -H "x-api-key: my-local-key" localhost:3000/accounts/10024500
+```
+
+The key goes in a header rather than the URL because servers and proxies routinely log
+URLs. The deployed instance's key is shared with reviewers separately, never committed.
+
 **Errors** always have the same shape, `{ "error": "<code>", "message": "<text>" }`, so
 the agent can branch on `error`. Express's default HTML error pages are replaced; the
 agent only ever receives JSON.
@@ -157,6 +173,7 @@ agent only ever receives JSON.
 |---|---|---|
 | 400 | `invalid_account_number` | Empty, or contains anything other than letters and digits once spaces and dashes are removed. |
 | 400 | `bad_request` | The URL itself is malformed, such as a broken `%` escape. |
+| 401 | `unauthorized` | `API_KEY` is set and the `x-api-key` header is missing or wrong. |
 | 404 | `account_not_found` | No account with that number. |
 | 404 | `not_found` | Unknown route or method. |
 | 500 | `internal_error` | Unexpected failure. Details are logged on the server, never returned. |
@@ -182,3 +199,6 @@ Deliberately left out of this prototype:
 - **Phone validation** checks digit count only. A library such as `libphonenumber-js`
   could also verify area codes. International numbers are rejected.
 - **Upload history** (who uploaded what, when) is not recorded beyond `updated_at`.
+- **Access control** is one shared key. Production would give each caller its own key,
+  so one can be revoked without affecting the others, and could also verify Retell's
+  request signature (`X-Retell-Signature`) so that only the agent can call the endpoint.

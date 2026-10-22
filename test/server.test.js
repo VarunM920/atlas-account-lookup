@@ -32,8 +32,8 @@ function close(s) {
 }
 
 /** GET a path; every response must be JSON, errors included. */
-async function get(urlPath, { base = baseUrl, method = 'GET' } = {}) {
-  const res = await fetch(base + urlPath, { method });
+async function get(urlPath, { base = baseUrl, method = 'GET', headers = {} } = {}) {
+  const res = await fetch(base + urlPath, { method, headers });
   assert.match(res.headers.get('content-type'), /^application\/json/, `${method} ${urlPath} returned non-JSON`);
   return { status: res.status, body: await res.json() };
 }
@@ -144,6 +144,29 @@ test('unknown routes and methods return a JSON 404', async () => {
 
 test('health check reports ok', async () => {
   assert.deepEqual(await get('/health'), { status: 200, body: { ok: true } });
+});
+
+test('with API_KEY set, account lookups require the x-api-key header', async () => {
+  const keyed = await listen(createApp({ db, apiKey: 'test-key' }));
+  const base = `http://127.0.0.1:${keyed.address().port}`;
+  try {
+    for (const headers of [{}, { 'x-api-key': 'wrong-key' }, { 'x-api-key': '' }]) {
+      const { status, body } = await get('/accounts/AB1234', { base, headers });
+      assert.equal(status, 401, JSON.stringify(headers));
+      assert.equal(body.error, 'unauthorized');
+    }
+    // Checked before validation, so a caller without the key learns nothing about inputs.
+    assert.equal((await get('/accounts/AB%23123', { base })).status, 401);
+
+    const ok = await get('/accounts/AB1234', { base, headers: { 'x-api-key': 'test-key' } });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.account_number, 'AB1234');
+
+    // The host's health check can't send headers, and returns no account data.
+    assert.equal((await get('/health', { base })).status, 200);
+  } finally {
+    close(keyed);
+  }
 });
 
 test('an unexpected failure returns a JSON 500 without internals', async (t) => {
