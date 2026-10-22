@@ -4,7 +4,8 @@ Prototype that lets CollectWise's AI agent look up Atlas Recovery debtor account
 account number. Atlas uploads a CSV of their inventory; an ingestion script loads it
 into SQLite; an HTTP endpoint serves lookups to the agent.
 
-> Status: ingestion is complete and tested. The lookup API and deployment are next.
+> Status: ingestion and the lookup API are complete and tested. The API key and
+> deployment are next.
 
 ## Requirements
 
@@ -16,6 +17,8 @@ into SQLite; an HTTP endpoint serves lookups to the agent.
 ```bash
 npm install
 npm run ingest -- data/sample_atlas_inventory.csv   # load the sample file
+npm start                                           # serve the API on port 3000 (or PORT)
+curl localhost:3000/accounts/10024500               # look up an account
 npm test                                            # run the test suite
 ```
 
@@ -102,6 +105,65 @@ to the time of every upload that includes the account. All rows from one upload 
 the same `updated_at`, so a record can be traced to the file it came from, provided
 Atlas keeps copies of past uploads (date-stamped filenames are recommended).
 
+## Lookup API
+
+`GET /accounts/:accountNumber` returns one account. The account number is normalized
+exactly as at ingestion, so `1002-9911` finds `10029911`; the agent hears numbers read
+aloud and may pass them with spaces or dashes. Leading zeros count: `00031822` and
+`31822` are different accounts.
+
+```bash
+curl localhost:3000/accounts/10024500
+```
+
+```json
+{
+  "account_number": "10024500",
+  "debtor_name": "Maria Garcia",
+  "phone_number": "+12145550100",
+  "balance": 50,
+  "balance_formatted": "$50.00",
+  "balance_as_of": "2026-10-22T13:43:18.307Z",
+  "status": "Active",
+  "client_name": "Alpha Bank",
+  "needs_review": false
+}
+```
+
+| Field | Notes |
+|---|---|
+| `balance` | Dollars, as a number. |
+| `balance_formatted` | The same amount, ready to be read aloud, so the agent doesn't format money itself. |
+| `balance_as_of` | When the upload containing this balance was loaded (UTC). Payments made since aren't reflected, so the agent should say "as of" this date. |
+| `status` | As Atlas sent it. Only `Active` is collectible; see *Statuses* above. |
+| `needs_review` | `true` when the account is held for review. |
+
+**Held accounts** (`needs_review: true`) come back with `balance`, `balance_formatted`,
+`balance_as_of` and `status` set to `null`. Their data may be out of date, so the API
+withholds anything the agent could quote instead of relying on the agent to ignore it.
+A held account can still come up, for example when a debtor calls in with their account
+number, so this can't be left to whoever decides which accounts to call. The identity
+fields remain, so the agent can confirm who it is talking to and say someone will
+follow up. The keys are always present, so the response shape never changes.
+
+**Closed and other non-`Active` accounts** are returned normally, not as a 404, so the
+agent can tell "closed" apart from "no such account".
+
+**Errors** always have the same shape, `{ "error": "<code>", "message": "<text>" }`, so
+the agent can branch on `error`. Express's default HTML error pages are replaced; the
+agent only ever receives JSON.
+
+| Status | `error` | When |
+|---|---|---|
+| 400 | `invalid_account_number` | Empty, or contains anything other than letters and digits once spaces and dashes are removed. |
+| 400 | `bad_request` | The URL itself is malformed, such as a broken `%` escape. |
+| 404 | `account_not_found` | No account with that number. |
+| 404 | `not_found` | Unknown route or method. |
+| 500 | `internal_error` | Unexpected failure. Details are logged on the server, never returned. |
+
+`GET /health` returns `{ "ok": true }` after a trivial database query. It's for the
+host's health check and uptime monitoring, and returns no account data.
+
 ## Project layout
 
 ```
@@ -109,6 +171,7 @@ src/schema.sql     table and index definitions
 src/db.js          opens the database and applies the schema
 src/validate.js    field parsing and validation (shared with the API)
 src/ingest.js      CSV ingestion CLI
+src/server.js      lookup API (Express)
 test/              unit and integration tests (node:test)
 data/              sample CSV; the database file is created here
 ```

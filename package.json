@@ -9,10 +9,12 @@
   },
   "scripts": {
     "ingest": "node src/ingest.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "start": "node src/server.js"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
-    "csv-parse": "^7.0.3"
+    "csv-parse": "^7.0.3",
+    "express": "~5.2.0"
   }
 }
