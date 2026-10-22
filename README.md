@@ -24,7 +24,7 @@ npm test                                            # run the test suite
 
 With no argument, `npm run ingest` reads `./atlas_inventory.csv`.
 
-The sample file contains 51 rows: 43 valid ones in a mix of real-world formats
+The sample file contains 52 rows: 44 valid ones in a mix of real-world formats
 (`$1,250.50`, `(214) 555-0101`, `ACTIVE`, a byte-order mark from Excel, one account
 with status `Paid`) and 8 deliberately invalid ones, so you can see how each problem
 is reported.
@@ -79,7 +79,7 @@ collection to stop. So:
   discusses payment only when it is exactly `Active` and the account isn't held for
   review. Anything else, including a typo like `Actve`, means no collection, so an
   unexpected value fails safe.
-- The upload summary counts accounts by status (`By status: Active 29, Closed 13,
+- The upload summary counts accounts by status (`By status: Active 30, Closed 13,
   Paid 1`), so an unexpected value is easy to spot.
 
 Which statuses allow collection is Atlas's decision; the email to Atlas asks for the
@@ -196,6 +196,7 @@ The key is sent with the submission, not committed. Some accounts to try:
 | Request | Shows |
 |---|---|
 | `/accounts/10024500` | An active account: $50.00 |
+| `/accounts/10020001` | John Doe, $2,400.00: the account the Retell agent's script uses |
 | `/accounts/1002-9911` | Dashes ignored: finds `10029911` |
 | `/accounts/00031822` | A closed account, leading zeros kept |
 | `/accounts/12345678` | 404 `account_not_found` |
