@@ -4,8 +4,8 @@ Prototype that lets CollectWise's AI agent look up Atlas Recovery debtor account
 account number. Atlas uploads a CSV of their inventory; an ingestion script loads it
 into SQLite; an HTTP endpoint serves lookups to the agent.
 
-> Status: ingestion, the lookup API and its API key are complete and tested, and the
-> deployment is configured for Render.
+> Status: ingestion, the lookup API, the live deployment and the Retell agent are
+> complete and tested.
 
 ## Requirements
 
@@ -227,6 +227,79 @@ During review, a free uptime monitor (such as UptimeRobot or cron-job.org) reque
 `/health` every 10 minutes keeps it awake; one service running all month uses about 744
 of Render's 750 free hours. A production deployment wouldn't sleep (see below).
 
+## Retell agent
+
+`retell/atlas_recovery_agent.json` is the exported Conversation Flow agent. It follows the
+assignment's script and looks up the account live through the deployed API.
+
+```
+Greeting → Verify identity (last 4 of SSN) → Look up account → Check status → Negotiate ⇄ Confirm terms → Goodbye
+   │                │                                              │              │
+   └ not John:      └ not verified ─────────────────→ Transfer ←───┘ not Active   └ dispute, or asks for a person → Transfer
+     take a message                                    (fails → Goodbye)            refuses, or wants to hang up → Goodbye
+     or end politely
+```
+
+**How it uses the API.** Once the caller is verified, a function node calls
+`GET /accounts/{{account_number}}` and stores `status`, `balance`, `balance_formatted` and
+`balance_as_of` as variables. A logic node then checks `status == Active` as an exact
+comparison, not an AI judgment. Everything else goes to the transfer: a closed or
+disputed account, a held account (its status comes back `null`), an unknown account
+(404), or a failed lookup. One check covers every case the agent mustn't collect on.
+
+In production the dialer passes the account number with each outbound call (Retell's
+`retell_llm_dynamic_variables`). The agent deliberately has no default for it, so a call
+without one fails into the transfer instead of looking up the wrong account. The
+function's 2-minute timeout covers the free server waking up: the caller hears "one
+moment while I pull up your account", then waits up to a minute.
+
+**To run the exported agent,** import the JSON into Retell, then:
+1. In the `lookup_account` function, replace `<API_KEY>` in the `x-api-key` header with the
+   key sent with the submission.
+2. In the test panel's dynamic variables, set `account_number` to `10020001` (John Doe,
+   $2,400.00).
+
+Then answer "yes" and "1234". To hear the transfer, use `00031822` (closed) or
+`12345678` (not found) instead.
+
+**Choices beyond the script:**
+- **Payment limits.** The script allows at most a 24-month plan and no settlement below
+  80%. The agent reads 80% as the minimum total for any terms, whether paid at once or in
+  installments. It opens with the full amount, then the script's 3-month plan. If the caller
+  proposes terms within the limits, it mentions the 3-month plan once and then accepts.
+  Before ending, it reads the terms back and asks the caller to confirm them.
+- **Privacy.** Nothing about the debt is said before verification, including to whoever
+  answers or takes a message. Telling a third party about a debt is a common
+  collections violation.
+- **Disputes.** If the caller disputes the debt, says it's already paid, or asks for a
+  person, the agent transfers instead of negotiating; collection should stop on a dispute.
+  A refusal or a wish to hang up gets a polite goodbye, not more pressure.
+- **Transfers.** There's no live-agent line for this demo, and Retell can't transfer web
+  calls anyway, so the transfer always fails. The failure path is deliberate: the agent
+  apologizes that no one is available and says someone will follow up. In production the
+  destination would be Atlas's live-agent queue.
+- **Names** are fixed as in the script. In production, the debtor's and client's names
+  would arrive with each call, like the account number.
+- **Voicemail:** the agent hangs up. Voicemails from collectors have strict content
+  rules, so the agent doesn't leave one.
+
+**Tested** with web calls against the live API, on John Doe's account ($2,400.00):
+- Paying in full; the 3-month plan (3 × $800.00); changing terms at the read-back, which
+  returns to negotiating without starting over.
+- Pushing hard: never below $1,920.00 (80%) or past 24 months. An offer within the limits
+  ($2,000 today) is accepted; one below them ($1,500) gets a counteroffer.
+- Someone else answering: taking a message, or a wrong number, ends politely. Asking
+  "What's this about?" before verification never reveals the debt.
+- Verification: a wrong answer or a refusal goes to the transfer; "one two three four" and
+  "twelve thirty-four" both pass.
+- A closed account (`00031822`), an unknown one (`12345678`), and a call with no account
+  number all go to the transfer without mentioning a balance. A held account takes the
+  same path, but the demo has none (each restart loads one clean file).
+- "I don't owe this" goes to the transfer; "I'm hanging up" gets a polite goodbye.
+- "How do I pay?" gets no invented website or phone number.
+- A cold start: the caller hears "one moment", waits up to a minute while the server wakes,
+  and the call continues.
+
 ## Project layout
 
 ```
@@ -237,6 +310,7 @@ src/ingest.js      CSV ingestion CLI
 src/server.js      lookup API (Express)
 test/              unit and integration tests (node:test)
 data/              sample CSV; the database file is created here
+retell/            exported Retell agent (API key replaced with <API_KEY>)
 render.yaml        Render deployment (free tier demo)
 .node-version      Node version for Render
 ```
@@ -257,3 +331,17 @@ Deliberately left out of this prototype:
 - **Outbound call lists** should exclude held and non-`Active` accounts. Those lists come
   from CollectWise's dialer, not this API, so it needs to check the same rules; the API
   already withholds held accounts' details if one is reached anyway.
+- **SSN verification.** The agent checks the script's fixed answer (`1234`); the CSV has
+  no SSN column. In production the agent would send the digits to an endpoint that
+  answers only "match" or "no match", so real SSN digits never reach the agent's prompt
+  or a lookup response.
+- **Debt-collector disclosure.** When a third-party agency collects, the FDCPA requires
+  telling the debtor the call is from a debt collector. The script's opener doesn't, and it
+  introduces the caller as Alpha Bank. The agent follows the script as given. Atlas's
+  compliance team should settle the wording, which would go right after verification so
+  no one else hears it.
+- **Recording the outcome.** Agreed terms exist only in the call transcript. Production
+  would record them (with Retell's post-call analysis fields, or a function that sends the
+  arrangement to Atlas) so the written confirmation the agent promises actually goes out.
+- **Payment arithmetic.** The agent works out plan amounts itself. It got them right in
+  testing, but production would calculate them in code and give the agent the numbers.

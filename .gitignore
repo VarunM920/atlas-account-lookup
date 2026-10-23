@@ -3,3 +3,5 @@ data/*.db
 data/*.db.bak
 data/*.db-journal
 CLAUDE.md
+.DS_Store
+retell/BUILD_SHEET.md

@@ -1,0 +1,493 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "last_modification_timestamp": 1792766164900,
+  "agent_name": "Atlas Recovery Agent",
+  "response_engine": {
+    "conversation_flow_id": "conversation_flow_eac4a22de40e",
+    "type": "conversation-flow",
+    "version": 0
+  },
+  "language": "en-US",
+  "data_storage_setting": "everything",
+  "contact_memory_config": {
+    "enable_read": true,
+    "enable_update": false
+  },
+  "opt_in_signed_url": false,
+  "version": 0,
+  "assigned_tags": [],
+  "is_published": false,
+  "post_call_analysis_model": "gpt-5.6-terra",
+  "pii_config": {
+    "categories": [],
+    "mode": "post_call"
+  },
+  "handbook_config": {
+    "ai_disclosure": true,
+    "default_personality": true
+  },
+  "timezone": "America/Los_Angeles",
+  "voice_id": "retell-Cimo",
+  "max_call_duration_ms": 3600000,
+  "interruption_sensitivity": 0.9,
+  "voicemail_option": {
+    "action": {
+      "type": "hangup"
+    }
+  },
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "conversationFlow": {
+    "conversation_flow_id": "conversation_flow_eac4a22de40e",
+    "version": 0,
+    "model_config": {
+      "type": "cascading",
+      "primary": {
+        "model": "gpt-5.6-terra",
+        "tier": "standard"
+      }
+    },
+    "last_modification_timestamp": 1792766572051,
+    "global_prompt": "You are Nancy, calling on behalf of Alpha Bank for John Doe. Speak naturally, politely and briefly: one or two sentences at a time.\n\nPrivacy: until the caller has passed identity verification, never mention a debt, a balance, a payment, or the reason for the call, to anyone. If asked why you're calling before then, say it's a personal business matter for John Doe.\n\nNever make up account details. The balance comes only from the account lookup. Never threaten, pressure, or invent fees, interest, or consequences.",
+    "nodes": [
+      {
+        "display_position": {
+          "x": -66,
+          "y": 270
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792685258229",
+            "id": "edge_is_john",
+            "transition_condition": {
+              "prompt": "The caller confirms they are John Doe",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-1792684922713",
+            "id": "edge_not_john",
+            "transition_condition": {
+              "prompt": "The caller says they are not John Doe",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "greeting",
+        "instruction": {
+          "text": "Hello, this is Nancy from Alpha Bank. Is this John Doe?",
+          "type": "static_text"
+        },
+        "name": "Greeting",
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 1902,
+          "y": 390
+        },
+        "edges": [],
+        "else_edge": {
+          "destination_node_id": "node-1792685539071",
+          "id": "node-1792684285644-else-edge",
+          "transition_condition": {
+            "prompt": "Else",
+            "type": "prompt"
+          }
+        },
+        "enable_typing_sound": false,
+        "id": "node-1792684285644",
+        "instruction": {
+          "text": "Thank you. One moment while I pull up your account.",
+          "type": "prompt"
+        },
+        "name": "Lookup Account",
+        "skippable": false,
+        "speak_during_execution": true,
+        "tool_id": "tool-1792684282394",
+        "tool_type": "local",
+        "type": "function",
+        "wait_for_result": true
+      },
+      {
+        "display_position": {
+          "x": 582,
+          "y": 366
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792685258229",
+            "id": "edge-1792684922713-mw6tt4g6s",
+            "transition_condition": {
+              "prompt": "John Doe comes to the phone",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-1792685040178",
+            "id": "edge-1792684967656-js0ibe27o",
+            "transition_condition": {
+              "prompt": "John is not available right now",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-1792686359955",
+            "id": "edge-1792684981355-5km3bctrp",
+            "transition_condition": {
+              "prompt": "The person says it's a wrong number or they don't know John Doe",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-1792684922713",
+        "instruction": {
+          "text": "I'm trying to reach John Doe. May I speak with them?",
+          "type": "static_text"
+        },
+        "name": "Ask for debtor",
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 894,
+          "y": 822
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792686359955",
+            "id": "edge-1792685040178-otq61eokj",
+            "transition_condition": {
+              "prompt": "The person has taken the message, or declined to take one",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-1792685040178",
+        "instruction": {
+          "text": "Ask: \"Can you take a message?\" If they agree, ask them to let John Doe know that Nancy from Alpha Bank called and would like a call back. Do not mention a debt, a balance, or why you are calling. Thank them.",
+          "type": "prompt"
+        },
+        "name": "Take Message",
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 1158,
+          "y": 366
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792685332584",
+            "id": "edge-1792685258229-p7vhzjurw",
+            "transition_condition": {
+              "prompt": "The caller gave digits, or said they can't or won't provide them",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-1792685258229",
+        "instruction": {
+          "text": "Thanks, John Doe. Can you please confirm the last 4 digits of your social security number?",
+          "type": "static_text"
+        },
+        "name": "Verify Identity",
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 1542,
+          "y": 366
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792684285644",
+            "id": "edge-1792766080863-8az0ump3y",
+            "transition_condition": {
+              "equations": [
+                {
+                  "left": "{{ssn_last4}}",
+                  "operator": "==",
+                  "right": "1234"
+                }
+              ],
+              "operator": "||",
+              "type": "equation"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-1792686101449",
+          "id": "node-1792685332584-else-edge",
+          "transition_condition": {
+            "prompt": "Else",
+            "type": "prompt"
+          }
+        },
+        "id": "node-1792685332584",
+        "name": "Extract SSN",
+        "skippable": false,
+        "type": "extract_dynamic_variables",
+        "variables": [
+          {
+            "description": "The last 4 digits of the caller's social security number, as exactly four digits with no spaces or punctuation (for example 1234). Leave empty if they did not give four digits.",
+            "name": "ssn_last4",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "display_position": {
+          "x": 2286,
+          "y": 390
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792685829334",
+            "id": "edge-1792685564932-lzq4ent2k",
+            "transition_condition": {
+              "equations": [
+                {
+                  "left": "{{account_status}}",
+                  "operator": "==",
+                  "right": "Active"
+                }
+              ],
+              "operator": "||",
+              "type": "equation"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-1792686101449",
+          "id": "edge-1792685539071-f6o9n0955",
+          "transition_condition": {
+            "prompt": "Else",
+            "type": "prompt"
+          }
+        },
+        "id": "node-1792685539071",
+        "name": "Logic Split",
+        "skippable": false,
+        "type": "branch"
+      },
+      {
+        "display_position": {
+          "x": 2622,
+          "y": 174
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792686205789",
+            "id": "edge-1792685829334-dl8bfcodd",
+            "transition_condition": {
+              "prompt": "The caller agreed to specific payment terms",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-1792686359955",
+            "id": "edge-1792685950701-q3du72vjj",
+            "transition_condition": {
+              "prompt": "The caller refuses to pay anything, or wants to end the call",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-1792686101449",
+            "id": "edge-1792764916635-i1wgu8grx",
+            "transition_condition": {
+              "prompt": "The caller disputes the debt, says they already paid, or asks for a live person",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-1792685829334",
+        "instruction": {
+          "text": "John Doe is verified. Their account with Alpha Bank has a balance of {{balance_formatted}} as of {{balance_as_of}}. Say the date naturally, like \"as of October 22\"; never read out the timestamp.\n\nAny terms within these limits are acceptable:\n- The total paid is at least 80% of {{balance}} dollars. Work out that minimum first, and never offer or accept a lower total, even if asked.\n- It's paid all at once, or in equal monthly payments over no more than 24 months.\n\n1. Tell them the balance and ask whether they can pay the full amount today.\n2. If they can't, offer a 3-month payment plan: three equal monthly payments, each one third of the balance.\n3. If they turn that down, keep negotiating within the limits. Start close to the full amount and move toward the limits only if needed.\n4. If the caller proposes their own terms at any point, check them against the limits. If they fit and you haven't offered the 3-month plan yet, mention it once; if they still prefer their own terms, accept them. If they don't fit, explain kindly and offer the closest terms that do.\n5. Before agreeing, state the exact terms: the total, the number of payments, and the amount of each, rounded to the cent.\n\nBe empathetic. Never threaten or pressure.\n\nIf payment terms were already discussed earlier in the call, don't start over: ask what they'd like to change and continue from there, within the same limits.",
+          "type": "prompt"
+        },
+        "name": "Negotiate",
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "custom_sip_headers": {},
+        "display_position": {
+          "x": 3414,
+          "y": 174
+        },
+        "edge": {
+          "destination_node_id": "node-1792686359955",
+          "id": "edge-1792685965523-vg7wqvjol",
+          "transition_condition": {
+            "prompt": "Transfer failed",
+            "type": "prompt"
+          }
+        },
+        "id": "node-1792685965523",
+        "ignore_e164_validation": false,
+        "name": "Transfer Call",
+        "skippable": false,
+        "speak_during_execution": false,
+        "transfer_destination": {
+          "number": "+18563630633",
+          "type": "predefined"
+        },
+        "transfer_option": {
+          "cold_transfer_mode": "sip_invite",
+          "show_transferee_as_caller": false,
+          "type": "cold_transfer"
+        },
+        "type": "transfer_call"
+      },
+      {
+        "display_position": {
+          "x": 3078,
+          "y": 342
+        },
+        "edges": [],
+        "id": "node-1792686101449",
+        "instruction": {
+          "text": "I'm going to transfer you to a live agent who can help you further. Please hold.",
+          "type": "static_text"
+        },
+        "name": "Transfer Notice",
+        "skip_response_edge": {
+          "destination_node_id": "node-1792685965523",
+          "id": "skip-response-edge-1792687074750-9nwd18wb5",
+          "transition_condition": {
+            "prompt": "Skip response",
+            "type": "prompt"
+          }
+        },
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 3222,
+          "y": 678
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-1792686359955",
+            "id": "edge-1792686205789-y13npzd5y",
+            "transition_condition": {
+              "prompt": "They agree to the terms",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-1792685829334",
+            "id": "edge-1792687960092-gue1wrrta",
+            "transition_condition": {
+              "prompt": "The caller disagrees, wants to change the terms, or isn't sure",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-1792686205789",
+        "instruction": {
+          "text": "Repeat the agreed terms back in one or two sentences and confirm the terms with them",
+          "type": "prompt"
+        },
+        "name": "Confirm Terms",
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 3774,
+          "y": 726
+        },
+        "edges": [],
+        "id": "node-1792686359955",
+        "instruction": {
+          "text": "Say a short, polite goodbye that fits the conversation.\n- If the caller just agreed to payment terms: thank them, tell them they'll receive a written confirmation of the agreed terms with details on how to make their payment, then say goodbye. Don't repeat the terms; they were just confirmed.\n- If a transfer just failed: apologize that no one is available right now and say someone will follow up.",
+          "type": "prompt"
+        },
+        "name": "Goodbye",
+        "skip_response_edge": {
+          "destination_node_id": "node-1792686463363",
+          "id": "skip-response-edge-1792687156934-a26ma9ysw",
+          "transition_condition": {
+            "prompt": "Skip response",
+            "type": "prompt"
+          }
+        },
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "display_position": {
+          "x": 4182,
+          "y": 798
+        },
+        "id": "node-1792686463363",
+        "instruction": {
+          "text": "",
+          "type": "static_text"
+        },
+        "name": "End Call",
+        "skippable": false,
+        "speak_during_execution": true,
+        "type": "end"
+      }
+    ],
+    "start_node_id": "greeting",
+    "start_speaker": "agent",
+    "tools": [
+      {
+        "args_at_root": false,
+        "description": "Look up the debtor's account by account number",
+        "enable_typing_sound": false,
+        "execution_message_type": "prompt",
+        "headers": {
+          "x-api-key": "<API_KEY>"
+        },
+        "max_retry": 0,
+        "method": "GET",
+        "name": "lookup_account",
+        "parameter_type": "form",
+        "query_params": {},
+        "response_variables": {
+          "account_status": "status",
+          "balance": "balance",
+          "balance_as_of": "balance_as_of",
+          "balance_formatted": "balance_formatted"
+        },
+        "speak_after_execution": true,
+        "speak_during_execution": false,
+        "timeout_ms": 120000,
+        "tool_id": "tool-1792684282394",
+        "type": "custom",
+        "url": "https://atlas-account-lookup-8a5s.onrender.com/accounts/{{account_number}}"
+      }
+    ],
+    "model_choice": {
+      "type": "cascading",
+      "model": "gpt-5.6-terra",
+      "high_priority": false,
+      "ultrafast": false
+    },
+    "tool_call_strict_mode": true,
+    "default_dynamic_variables": {},
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "filter_score": 0.6,
+      "top_k": 3
+    },
+    "begin_tag_display_position": {
+      "x": -234,
+      "y": 246
+    },
+    "is_published": false,
+    "is_transfer_cf": false
+  }
+}
