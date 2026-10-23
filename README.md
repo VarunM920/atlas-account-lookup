@@ -7,6 +7,30 @@ into SQLite; an HTTP endpoint serves lookups to the agent.
 > Status: ingestion, the lookup API, the live deployment and the Retell agent are
 > complete and tested.
 
+## At a glance
+
+- **Run it locally** (Node 22+): `npm install`, `npm run ingest -- data/sample_atlas_inventory.csv`,
+  `npm start`, then `curl localhost:3000/accounts/10024500`. Details in [Quick start](#quick-start).
+- **Live demo:** https://atlas-account-lookup-8a5s.onrender.com, with the API key sent with
+  the submission. See [Deployment](#deployment).
+- **Where things are:** ingestion in `src/ingest.js`, the API in `src/server.js`, the schema in
+  `src/schema.sql`, the email in `EMAIL.md`, the Retell agent in `retell/atlas_recovery_agent.json`.
+
+Key decisions (reasoning in the sections below):
+- **Duplicate account numbers in one file:** every copy is rejected, since the file doesn't
+  say which is right. ([Ingestion rules](#ingestion-rules))
+- **Invalid rows** are skipped and reported, and never overwrite good data. An account
+  already on file is flagged for review until a valid row arrives.
+- **A bad file** (not UTF-8, a missing column, or more than 20% bad rows) loads nothing.
+- **Repeat uploads** update accounts by account number. Nothing is deleted; closures
+  arrive as `status = Closed`.
+- **Statuses:** any value is stored, and only `Active` is collectible. The agent enforces this.
+- **The API** accepts account numbers as spoken (`ab-1234` finds `AB1234`), always answers
+  in JSON (400, 401, 404), withholds balances on flagged accounts, and requires an
+  `x-api-key` header when deployed. ([Lookup API](#lookup-api))
+- **The Retell agent** follows the script, looks up the account live after verifying
+  identity, and transfers anything it shouldn't collect on. ([Retell agent](#retell-agent))
+
 ## Requirements
 
 - Node.js 22+
