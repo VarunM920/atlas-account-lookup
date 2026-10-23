@@ -9,7 +9,7 @@ Hope you're doing well. I'm happy to share that the account-number lookup your t
 **How it works**
 - You keep uploading your inventory file (the CSV) as you do today. Each time, we check every row and load the accounts into the system the agent uses.
 - During a call, the agent looks up the account by its number and gets the debtor's name, balance and status.
-- It discusses payment only after confirming it's speaking with the right person, and only on accounts marked "Active". Balances are quoted "as of" your latest upload, so the fresher the file, the more accurate the call.
+- It discusses payment only after verifying the caller's identity, and only on accounts marked "Active". Balances are quoted "as of" your latest upload, so the fresher the file, the more accurate the call.
 
 **What happens to each file**
 - Each file needs six columns: account number, debtor name, phone number, balance, status and client name.
@@ -35,10 +35,10 @@ Forward Deployed Engineer, CollectWise
 ---
 
 **File checklist (for whoever prepares the upload)**
-1. Save the file as **CSV UTF-8** (in Excel: File > Save As > "CSV UTF-8"). Other formats garble names with accents, so a file like that is refused.
+1. Save the file as **CSV UTF-8** (in Excel: File > Save As > "CSV UTF-8"). Other formats garble names with accents, so those files will be refused.
 2. Use these six column headings: `account_number`, `debtor_name`, `phone_number`, `balance`, `status`, `client_name`. Column order and capitalization don't matter.
 3. List each account number only once per file.
-4. Keep leading zeros in account numbers. If your system exports the CSV directly, upload it as is: opening and re-saving it in Excel turns `00123` into `123`, which is a different account. If you build the file in Excel, format the account number column as Text first.
+4. Keep leading zeros in account numbers. Opening and re-saving the file in Excel strips them (`00123` becomes `123`, a different account).
 5. Fill in every column on every row. Balances can be written like `1250.50` or `$1,250.50` (never negative), and phone numbers in any common US format.
 6. When an account closes or is paid off, keep it in the file with its new status (for example `Closed`) rather than removing it. An account that's left out of a file stays as it was. If your export can't include closed accounts, let us know.
 7. Upload soon after exporting, since the agent quotes balances as of the upload.
