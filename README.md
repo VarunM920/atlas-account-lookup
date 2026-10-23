@@ -311,6 +311,7 @@ src/server.js      lookup API (Express)
 test/              unit and integration tests (node:test)
 data/              sample CSV; the database file is created here
 retell/            exported Retell agent (API key replaced with <API_KEY>)
+EMAIL.md           email to Atlas Recovery's COO
 render.yaml        Render deployment (free tier demo)
 .node-version      Node version for Render
 ```
