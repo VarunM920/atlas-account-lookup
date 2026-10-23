@@ -2,6 +2,7 @@
 //
 //   npm start                          # port 3000, or PORT
 //   curl localhost:3000/accounts/10024500
+//   curl "localhost:3000/accounts?account_number=10024500"    # same lookup
 //
 // When API_KEY is set, /accounts requires it in the x-api-key header. Unset (local
 // runs, tests), the API is open and a warning is logged at startup.
@@ -67,8 +68,8 @@ export function createApp({ db, apiKey }) {
 
   // Same rule as ingestion: parseAccountNumber() normalizes with
   // normalizeAccountNumber(), so "ab-1234 56" finds AB123456.
-  app.get('/accounts/:accountNumber', (req, res) => {
-    const { value: accountNumber, error } = parseAccountNumber(req.params.accountNumber);
+  function sendAccount(res, rawAccountNumber) {
+    const { value: accountNumber, error } = parseAccountNumber(rawAccountNumber);
     if (error) {
       return sendError(res, 400, 'invalid_account_number',
         'The account number is empty or contains characters other than letters and digits.');
@@ -79,11 +80,17 @@ export function createApp({ db, apiKey }) {
       return sendError(res, 404, 'account_not_found', `No account found with number ${accountNumber}.`);
     }
     res.json(toResponse(row));
-  });
+  }
 
-  // "/accounts/" with nothing after it: an empty account number, not a missing route.
+  app.get('/accounts/:accountNumber', (req, res) => sendAccount(res, req.params.accountNumber));
+
+  // The assignment's other form, /accounts?account_number=..., does the same lookup.
+  // "/accounts" with no number at all is an empty account number, not a missing route.
   app.get('/accounts', (req, res) => {
-    sendError(res, 400, 'invalid_account_number', 'No account number was provided.');
+    if (req.query.account_number === undefined) {
+      return sendError(res, 400, 'invalid_account_number', 'No account number was provided.');
+    }
+    sendAccount(res, req.query.account_number);
   });
 
   app.use((req, res) => {

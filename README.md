@@ -107,13 +107,15 @@ Atlas keeps copies of past uploads (date-stamped filenames are recommended).
 
 ## Lookup API
 
-`GET /accounts/:accountNumber` returns one account. The account number is normalized
+`GET /accounts/:accountNumber` returns one account. `GET /accounts?account_number=...` does
+the same lookup, so both forms from the assignment work. The account number is normalized
 exactly as at ingestion, so `1002-9911` finds `10029911`; the agent hears numbers read
 aloud and may pass them with spaces or dashes. Leading zeros count: `00031822` and
 `31822` are different accounts.
 
 ```bash
 curl localhost:3000/accounts/10024500
+curl "localhost:3000/accounts?account_number=10024500"   # same result
 ```
 
 ```json
@@ -197,6 +199,7 @@ The key is sent with the submission, not committed. Some accounts to try:
 |---|---|
 | `/accounts/10024500` | An active account: $50.00 |
 | `/accounts/10020001` | John Doe, $2,400.00: the account the Retell agent's script uses |
+| `/accounts?account_number=10020001` | The query form: same as `/accounts/10020001` |
 | `/accounts/1002-9911` | Dashes ignored: finds `10029911` |
 | `/accounts/00031822` | A closed account, leading zeros kept |
 | `/accounts/12345678` | 404 `account_not_found` |

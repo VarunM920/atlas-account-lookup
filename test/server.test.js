@@ -105,6 +105,23 @@ test('returns 400 invalid_account_number for empty or malformed input', async ()
   }
 });
 
+test('also accepts the account number as ?account_number=', async () => {
+  const { status, body } = await get('/accounts?account_number=ab-12%2034');
+  assert.equal(status, 200);
+  assert.equal(body.account_number, 'AB1234');
+
+  const missing = await get('/accounts?account_number=99999999');
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body.error, 'account_not_found');
+
+  // A repeated parameter arrives as a list ("1,2") and fails validation like any bad input.
+  for (const query of ['', '?account_number=', '?account_number=AB%23123', '?account_number=1&account_number=2']) {
+    const { status, body } = await get(`/accounts${query}`);
+    assert.equal(status, 400, `"${query}"`);
+    assert.equal(body.error, 'invalid_account_number', `"${query}"`);
+  }
+});
+
 test('returns 400 for a malformed URL escape instead of crashing', async () => {
   const { status, body } = await get('/accounts/%E0%A4%A');
   assert.equal(status, 400);
@@ -157,6 +174,7 @@ test('with API_KEY set, account lookups require the x-api-key header', async () 
     }
     // Checked before validation, so a caller without the key learns nothing about inputs.
     assert.equal((await get('/accounts/AB%23123', { base })).status, 401);
+    assert.equal((await get('/accounts?account_number=AB1234', { base })).status, 401);
 
     const ok = await get('/accounts/AB1234', { base, headers: { 'x-api-key': 'test-key' } });
     assert.equal(ok.status, 200);
